@@ -12,14 +12,14 @@
   index.htm in the root directory of the SD card.
   The server also came with a great editor utility which, if placed on the SD,
   can be used to edit the web pages or any other text file on the SDcard.
-  
+
   Small parts of the code are imbedded elsewhere as needed in the preamble and Setup sections.
   and "handleClient()" is invoked as often as practical in Loop to keep it running.
-  
+
   The author's copyright and license info follows:
 
   --------------------------------------------------------------------------------------------------
- 
+
   SDWebServer - Example WebServer with SD Card backend for esp8266
 
   Copyright (c) 2015  . All rights reserved.
@@ -50,14 +50,14 @@
   ----------------------------------------------------------------------------------------------------------------
 */
 
-const char txtPlain_P[] PROGMEM = "text/plain";
-const char appJson_P[]  PROGMEM = "application/json";
-const char txtJson_P[]  PROGMEM = "text/json";
+const char txtPlain_P[] = "text/plain";
+const char appJson_P[]  = "application/json";
+const char txtJson_P[]  = "text/json";
 
 bool authenticate(authLevel level){
   if(auth(level)){
     return true;
-  } 
+  }
   requestAuth();
   return false;
 }
@@ -66,7 +66,7 @@ bool authenticate(authLevel level){
 
 void handleRequest(){
   String uri = server.uri();
-      
+
   if(serverOn(authAdmin, F("/status"),HTTP_GET, handleStatus)) return;
   if(serverOn(authAdmin, F("/vcal"),HTTP_GET, handleVcal)) return;
   if(serverOn(authAdmin, F("/command"), HTTP_GET, handleCommand)) return;
@@ -86,8 +86,8 @@ void handleRequest(){
   if(loadFromSdCard(uri)){
     return;
   }
-  
-  trace(T_WEB,12); 
+
+  trace(T_WEB,12);
   String message = "Not found: ";
   message += (server.method() == HTTP_GET)?"GET":"POST";
   message += ", URI: ";
@@ -120,7 +120,7 @@ bool loadFromSdCard(String path){
   if(path == "/edit" || path == "/graph"){
     path += ".htm";
   }
-  
+
   if(path.endsWith(".src")) path = path.substring(0, path.lastIndexOf("."));
   else if(path.endsWith(".htm")) dataType = F("text/html");
   else if(path.endsWith(".css")) dataType = F("text/css");
@@ -217,7 +217,7 @@ void handleFileUpload(){
     if(uploadFile) {
       uploadFile.write(upload.buf, upload.currentSize);
     }
-    
+
   } else if(upload.status == UPLOAD_FILE_END){
     if(uploadFile){
       uploadFile.close();
@@ -277,14 +277,14 @@ void deleteRecursive(String path){
 }
 
 void handleDelete(){
-  trace(T_WEB,9); 
+  trace(T_WEB,9);
   if(server.args() == 0) return returnFail("BAD ARGS");
   String path = server.arg(0);
   if(path.startsWith("/esp_spiffs")){
     spiffsRemove(path.substring(11).c_str());
     returnOK();
     return;
-  } 
+  }
     if(path == "/" || !SD.exists((char *)path.c_str())) {
     returnFail("BAD PATH");
     return;
@@ -300,7 +300,7 @@ void handleDelete(){
 }
 
 void handleCreate(){
-  trace(T_WEB,10); 
+  trace(T_WEB,10);
   if(server.args() == 0) return returnFail("BAD ARGS");
   String path = server.arg(0);
 
@@ -309,7 +309,7 @@ void handleCreate(){
     spiffsWrite(path.substring(11).c_str(),"");
     returnOK();
     return;
-  } 
+  }
 
   if(path == "/" || SD.exists((char *)path.c_str())) {
     returnFail("BAD PATH");
@@ -329,7 +329,7 @@ void handleCreate(){
 }
 
 void printDirectory() {
-  trace(T_WEB,7); 
+  trace(T_WEB,7);
   if(!server.hasArg("dir")) return returnFail("BAD ARGS");
   String response;
   String path = server.arg("dir");
@@ -362,12 +362,12 @@ void printDirectory() {
       array.add(object);
     }
     array.printTo(response);
-  }  
+  }
   server.send(200, appJson_P, response);
 }
 
 void printSpiffsDirectory(String path) {
-  trace(T_WEB,7); 
+  trace(T_WEB,7);
   if(path != "/" && !SD.exists((char *)path.c_str())) return returnFail("BAD PATH");
   File dir = SD.open((char *)path.c_str());
   path = String();
@@ -393,9 +393,9 @@ void printSpiffsDirectory(String path) {
 }
 
 /************************************************************************************************
- * 
+ *
  * Following handlers added to WebServer for IotaWatt specific requests
- * 
+ *
  **********************************************************************************************/
 
 void handlePasswords(){
@@ -419,7 +419,7 @@ void handlePasswords(){
       return;
     }
   }
-  
+
   if(request.containsKey("newadmin")){
     delete[] adminH1;
     adminH1 = nullptr;
@@ -430,14 +430,14 @@ void handlePasswords(){
       String newAdminH1 = calcH1("admin", deviceName, request["newadmin"].as<char*>());
       adminH1 = new uint8_t[16];
       hex2bin(adminH1, newAdminH1.c_str(), 16);
-    } 
+    }
     if(request.containsKey("newuser")){
       String newAdmin = request["newuser"].as<char*>();
       if(newAdmin.length()){
         String newUserH1 = calcH1("user", deviceName, request["newuser"].as<char*>());
         userH1 = new uint8_t[16];
         hex2bin(userH1, newUserH1.c_str(), 16);
-      } 
+      }
     }
     if(authSavePwds()){
       server.send(200, txtPlain_P, F("Passwords reset."));
@@ -445,18 +445,18 @@ void handlePasswords(){
     } else {
       server.send(400, txtPlain_P, F("Error saving passwords."));
       log("Password save failed.");
-    } 
+    }
   } else {
     server.send(200, txtPlain_P, "");
-  } 
+  }
   return;
 }
 
 void handleStatus(){
-  trace(T_WEB,0); 
+  trace(T_WEB,0);
   DynamicJsonBuffer jsonBuffer;
-  JsonObject& root = jsonBuffer.createObject(); 
-  
+  JsonObject& root = jsonBuffer.createObject();
+
   if(server.hasArg(F("stats"))){
     trace(T_WEB,14);
     JsonObject& stats = jsonBuffer.createObject();
@@ -474,7 +474,7 @@ void handleStatus(){
     trace(T_WEB,14);
     root.set(F("stats"),stats);
   }
-  
+
   if(server.hasArg(F("inputs"))){
     trace(T_WEB,15);
     JsonArray& channelArray = jsonBuffer.createArray();
@@ -524,7 +524,7 @@ void handleStatus(){
     trace(T_WEB,17);
     JsonObject& influx = jsonBuffer.createObject();
     influx.set(F("running"),influxStarted);
-    influx.set(F("lastpost"),influxLastPost);  
+    influx.set(F("lastpost"),influxLastPost);
     root["influx"] = influx;
   }
 
@@ -532,7 +532,7 @@ void handleStatus(){
     trace(T_WEB,22);
     JsonObject& emon = jsonBuffer.createObject();
     emon.set(F("running"),EmonStarted);
-    emon.set(F("lastpost"),EmonLastPost);  
+    emon.set(F("lastpost"),EmonLastPost);
     root["emon"] = emon;
   }
 
@@ -571,17 +571,17 @@ void handleStatus(){
     trace(T_WEB,18);
     JsonObject& passwords = jsonBuffer.createObject();
     passwords.set(F("admin"),adminH1 != nullptr);
-    passwords.set(F("user"),userH1 != nullptr);  
+    passwords.set(F("user"),userH1 != nullptr);
     root["passwords"] = passwords;
   }
 
   String response = "";
   root.printTo(response);
-  server.send(200, txtJson_P, response);  
+  server.send(200, txtJson_P, response);
 }
 
 void handleVcal(){
-  trace(T_WEB,1); 
+  trace(T_WEB,1);
   if( ! (server.hasArg(F("channel")) && server.hasArg("cal"))){
     server.send(400, txtJson_P, F("Missing parameters"));
     return;
@@ -593,20 +593,20 @@ void handleVcal(){
   root.set("vrms",Vrms);
   String response = "";
   root.printTo(response);
-  server.send(200, txtJson_P, response);  
+  server.send(200, txtJson_P, response);
 }
 
 void handleCommand(){
-  trace(T_WEB,2); 
+  trace(T_WEB,2);
   if(server.hasArg(F("restart"))) {
-    trace(T_WEB,3); 
+    trace(T_WEB,3);
     server.send(200, "text/plain", "ok");
     log("Restart command received.");
     delay(500);
     ESP.restart();
   }
   if(server.hasArg(F("vtphase"))){
-    trace(T_WEB,4); 
+    trace(T_WEB,4);
     uint16_t chan = server.arg("vtphase").toInt();
     int refChan = 0;
     if(server.hasArg(F("refchan"))){
@@ -617,34 +617,34 @@ void handleCommand(){
       shift = server.arg(F("shift")).toInt();
     }
     server.send(200, txtPlain_P, samplePhase(refChan, chan, shift));
-    return; 
+    return;
   }
   if(server.hasArg(F("sample"))){
-    trace(T_WEB,5); 
+    trace(T_WEB,5);
     uint16_t chan = server.arg(F("sample")).toInt();
     samplePower(chan,0);
     getSamples();
-    return; 
+    return;
   }
   if(server.hasArg(F("disconnect"))) {
-    trace(T_WEB,6); 
+    trace(T_WEB,6);
     server.send(200, txtPlain_P, "ok");
     log("Disconnect command received.");
     WiFi.disconnect(false);
     return;
   }
   if(server.hasArg(F("deletelog"))) {
-    trace(T_WEB,21); 
+    trace(T_WEB,21);
     String arg = server.arg(F("deletelog"));
     log("deletelog=%s command received.", arg.c_str());
     if(arg == "current"){
-      trace(T_WEB,21); 
+      trace(T_WEB,21);
       currLog.end();
       deleteRecursive(String(IotaLogFile) + ".log");
       deleteRecursive(String(IotaLogFile) + ".ndx");
-    } 
+    }
     else if(arg == "history"){
-      trace(T_WEB,22); 
+      trace(T_WEB,22);
       histLog.end();
       deleteRecursive(String(historyLogFile) + ".log");
       deleteRecursive(String(historyLogFile) + ".ndx");
@@ -669,7 +669,7 @@ void handleCommand(){
   server.send(400, txtPlain_P, F("Unrecognized request"));
 }
 
-void handleGetFeedList(){ 
+void handleGetFeedList(){
   trace(T_WEB,18);
   DynamicJsonBuffer jsonBuffer;
   JsonArray& array = jsonBuffer.createArray();
@@ -681,7 +681,7 @@ void handleGetFeedList(){
         voltage["tag"] = F("Voltage");
         voltage["name"] = inputChannel[i]->_name;
         array.add(voltage);
-      } 
+      }
       else
         if(inputChannel[i]->_type == channelTypePower){
         JsonObject& power = jsonBuffer.createObject();
@@ -709,7 +709,7 @@ void handleGetFeedList(){
         voltage["tag"] = F("Voltage");
         voltage["name"] = script->name();
         array.add(voltage);
-      } 
+      }
       else if(units.equalsIgnoreCase("watts")) {
         JsonObject& power = jsonBuffer.createObject();
         power["id"] = String("OP") + String(script->name());
@@ -732,7 +732,7 @@ void handleGetFeedList(){
     }
     script = script->next();
   }
-  
+
   String response;
   array.printTo(response);
   server.send(200, appJson_P,response);
@@ -765,7 +765,7 @@ void sendMsgFile(File &dataFile, int32_t relPos){
 }
 
 void handleGetConfig(){
-  trace(T_WEB,8); 
+  trace(T_WEB,8);
   if(server.hasArg(F("update"))){
     if(server.arg(F("update")) == "restart"){
       server.send(200, F("text/plain"), "OK");
@@ -774,9 +774,9 @@ void handleGetConfig(){
       ESP.restart();
     }
     else if(server.arg(F("update")) == "reload"){
-      getConfig(); 
+      getConfig();
       server.send(200, txtPlain_P, "OK");
-      return;  
+      return;
     }
   }
   server.send(400, txtPlain_P, "Bad Request.");
