@@ -12,40 +12,40 @@ void setLedState();
 void setup()
 {
   //*************************************** Start Serial connection (if any)***************************
-   
+
   Serial.begin(115200);
   delay(250);
   //Serial.println(F("\r\n\n\n** Restart **\r\n\n"));
   //Serial.println(F("Serial Initialized"));
-  
+
   //*************************************** Start SPI *************************************************
-    
+
   pinMode(pin_CS_ADC0,OUTPUT);                    // Make sure all the CS pins are HIGH
   digitalWrite(pin_CS_ADC0,HIGH);
   pinMode(pin_CS_ADC1,OUTPUT);
   digitalWrite(pin_CS_ADC1,HIGH);
   pinMode(pin_CS_SDcard,OUTPUT);
   digitalWrite(pin_CS_SDcard,HIGH);
-  
+
   pinMode(redLed,OUTPUT);
   digitalWrite(redLed,LOW);
 
   //*************************************** Initialize SPI *******************************************
-  
+
   SPI.begin();
   SPI.beginTransaction(SPISettings(2000000,MSBFIRST,SPI_MODE0));
   Serial.println("\r\nSPI started.");
-   
+
   //*************************************** Initialize the SD card ************************************
 
   if(!SD.begin(pin_CS_SDcard)) {
     log("SD initiatization failed. Retrying.");
     setLedCycle(LED_SD_INIT_FAILURE);
-    while(!SD.begin(pin_CS_SDcard, SPI_FULL_SPEED)){ 
+    while(!SD.begin(pin_CS_SDcard, SPI_FULL_SPEED)){
       yield();
     }
     endLedCycle();
-    digitalWrite(greenLed,HIGH); 
+    digitalWrite(greenLed,HIGH);
   }
   hasSD = true;
   log("SD initialized.");
@@ -60,7 +60,7 @@ void setup()
   Wire.endTransmission();
   Wire.requestFrom(PCF8523_ADDRESS, 1);
   uint8_t Control_3 = Wire.read();
-  
+
   if(rtc.initialized()){
     timeRefNTP = rtc.now().unixtime() + SEVENTY_YEAR_SECONDS;
     timeRefMs = millis();
@@ -69,7 +69,7 @@ void setup()
     if((Control_3 & 0x08) != 0){
       log("Power failure detected.");
       powerFailRestart = true;
-      Wire.beginTransmission(PCF8523_ADDRESS);            
+      Wire.beginTransmission(PCF8523_ADDRESS);
       Wire.write((byte)PCF8523_CONTROL_3);
       Wire.write((byte)0);
       Wire.endTransmission();
@@ -80,7 +80,7 @@ void setup()
     log("Real Time Clock not initialized.");
   }
   programStartTime = UTCtime();
-  
+
   Wire.beginTransmission(PCF8523_ADDRESS);            // Set crystal load capacitance
   Wire.write((byte)0);
   Wire.write((byte)0x80);
@@ -91,7 +91,7 @@ void setup()
   log("Version %s", IOTAWATT_VERSION);
 
   copyUpdate(String(IOTAWATT_VERSION));
-  
+
   //**************************************** Display the trace ****************************************
 
   log("Reset reason: %s", ESP.getResetReason().c_str());
@@ -129,14 +129,14 @@ if(spiffsBegin()){
   if(timezoneRule){
     log("Using Daylight Saving Time (BST) when in effect.");
   }
-  log("device name: %s", deviceName); 
+  log("device name: %s", deviceName);
 
 //************************************* Load passwords *******************************************
 
-  authLoadPwds();  
+  authLoadPwds();
 
 //*************************************** Start the WiFi  connection *****************************
-  
+
   WiFi.hostname(deviceName);
   WiFi.setAutoConnect(true);
   WiFi.begin();
@@ -177,8 +177,8 @@ if(spiffsBegin()){
   }
   if (LLMNR.begin(deviceName)){
     log("LLMNR responder started for hostname %s", deviceName);
-  } 
-  
+  }
+
  //*************************************** Start the web server ****************************
 
   server.on(F("/edit"), HTTP_POST, returnOK, handleFileUpload);
@@ -189,16 +189,23 @@ if(spiffsBegin()){
   server.begin();
   log("HTTP server started");
   WiFi.mode(WIFI_STA);
-  
+
+  // Get Google Authentication Token
+  #define FIREBASE_PROJECT "wellshire-testbed"
+  #define FIREBASE_WEB_API_KEY "AIzaSyCuijeNPvzmuSDVNFM4D_EAPh-_uGmkUqo"
+  #define FIREBASE_USERNAME "brian.wedel@gmail.com"
+  #define FIREBASE_PASSWORD "Rowan&Wes"
+  #define GOOGLE_AUTH_URL = ""
+
  //*************************************** Start the logging services *********************************
 
-  NewService(WiFiService, T_WiFi); 
+  NewService(WiFiService, T_WiFi);
   NewService(timeSync, T_timeSync);
   NewService(statService, T_stats);
   NewService(updater, T_UPDATE);
   NewService(dataLog, T_datalog);
   NewService(historyLog, T_history);
-  
+
 }  // setup()
 /***************************************** End of Setup **********************************************/
 
@@ -207,8 +214,8 @@ void dropDead(const char* pattern){
   log("Program halted.");
   setLedCycle(pattern);
   while(1){
-    delay(1000);   
-  }  
+    delay(1000);
+  }
 }
 
 void setLedCycle(const char* pattern){

@@ -1,5 +1,7 @@
 #include "IotaWatt.h"
- 
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
+
 void loop()
 {
 /******************************************************************************
@@ -29,6 +31,30 @@ void loop()
     lastChannel = nextChannel;
   }
 
+  // Send dummy message to Firestore
+  #define FIRESTORE_PROXY_IP "192.168.86.21"
+  #define FIRESTORE_PROXY_PORT 12000
+  // generate data to firestore once a second
+  #define INTER_SEND_TIME_MS 1000 // 1 second
+  static uint32_t last_send_ms = 0;
+  uint32_t current_time_ms = millis();
+  if ((current_time_ms - last_send_ms) >= INTER_SEND_TIME_MS)
+  {
+
+     WiFiUDP udp;
+     StaticJsonBuffer<500> jsonBuffer;
+     JsonObject& root = jsonBuffer.createObject();
+     char replyPacket[1024];
+     root["time"] = current_time_ms;
+     root.printTo(replyPacket);
+
+     udp.beginPacket(FIRESTORE_PROXY_IP, FIRESTORE_PROXY_PORT);
+     udp.write(replyPacket);
+     udp.endPacket();
+
+     last_send_ms = current_time_ms;
+   }
+
   // --------- Give web server a shout out.
   //           serverAvailable will be false if there is a request being serviced by
   //           an Iota SERVICE. (GetFeedData)
@@ -41,7 +67,7 @@ void loop()
     trace(T_LOOP,4);
     yield();
   }
-  
+
 
 // ---------- If the head of the service queue is dispatchable
 //            call the SERVICE.
@@ -55,47 +81,47 @@ void loop()
     yield();
     trace(T_LOOP,6);
     if(thisBlock->callTime > 0){
-      AddService(thisBlock); 
+      AddService(thisBlock);
     } else {
-      delete thisBlock;    
+      delete thisBlock;
     }
-  } 
+  }
 }
 
 /*****************************************************************************************************
 
                                     End of main Loop
 
-             
+
  /******************************************************************************************************
 
  * Scheduler/Dispatcher support functions.
- * 
+ *
  * The main loop steps through and samples the channels at the millisecond level.  It invokes samplePower()
- * which samples one or more waves and updates the corresponding data buckets.  After each sample, there 
+ * which samples one or more waves and updates the corresponding data buckets.  After each sample, there
  * are a few milliseconds before the next AC zero crossing, so we try to do everything else during that
  * downtime.
- * 
- * To accomplish that, other activities are organized as SERVICEs that are scheduled and are dispatched in 
- * Loop during the half-cycle downtime. The ESP8266 is already running a lower level operating system that 
+ *
+ * To accomplish that, other activities are organized as SERVICEs that are scheduled and are dispatched in
+ * Loop during the half-cycle downtime. The ESP8266 is already running a lower level operating system that
  * is task oriented and dispatches this program along with other tasks - most notably the WiFi stack. Ticker
  * taps into that and provides one time or periodic interrupts that could be used to run services, but we
- * run the channel sampling with interrupts disabled, and we really don't need sub-second scheduling for 
+ * run the channel sampling with interrupts disabled, and we really don't need sub-second scheduling for
  * our services anyway, so Ticker is not used.
- * 
+ *
  * This mechanism schedules at a resolution of one second, and dispatches during the optimal time period
  * between AC cycles.  To avoid context and synchonization issues, each service is coded as a state-machine.
  * They must be well behaved and should try to run for less than a few milliseconds. Although that isn't
  * always possible and doesn't do any real harm if they run over - just reduces the sampling frequency a bit.
- * 
- * Services return the UNIXtime of the next requested dispatch.  If the requested time is in the past, 
- * the service is requeued at the current time, so if a service just wants to relinquish but reschedule 
+ *
+ * Services return the UNIXtime of the next requested dispatch.  If the requested time is in the past,
+ * the service is requeued at the current time, so if a service just wants to relinquish but reschedule
  * for the next available opportunity, just return 1.  If a service returns zero, it's service block will
  * be deleted.  To reschedule, AddService would have to be called to create a new serviceBlock.
- * 
+ *
  * The schedule itself is kept as an ordered list of control blocks in ascending order of time + priority.
  * Loop simply invokes the service currently at the beginning of the list.
- * 
+ *
  * The WiFi server is not one of these services.  It is invoked each time through the loop because it
  * polls for activity.
  ********************************************************************************************************/
@@ -121,9 +147,9 @@ void AddService(struct serviceBlock* newBlock){
       if((newBlock->callTime < link->next->callTime) ||
         (newBlock->callTime == link->next->callTime && newBlock->priority < link->next->priority)){
         break;
-      }        
+      }
       link = link->next;
-    } 
+    }
     newBlock->next = link->next;
     link->next = newBlock;
   }
@@ -131,13 +157,13 @@ void AddService(struct serviceBlock* newBlock){
 
 /************************************************************************************************
  *  Program Trace Routines.
- *  
+ *
  *  This is a real handy part of the package since there is no interactive debugger.  The idea is
  *  to just drop breadcrumbs at key places so that in the event of an exception or wdt restart, we
  *  can at least get some idea where it happened.
- *  
- *  invoking trace() puts a 32 bit entry into the RTC_USER_MEM area.  
- *  After a restart, the 32 most recent entries are logged, oldest to most rent, 
+ *
+ *  invoking trace() puts a 32 bit entry into the RTC_USER_MEM area.
+ *  After a restart, the 32 most recent entries are logged, oldest to most rent,
  *  using logTrace.
  *************************************************************************************************/
 void trace(const uint8_t module, const uint8_t id, const uint8_t det){
@@ -162,9 +188,9 @@ void logTrace(void){
     if(traceEntry.det == 0){
       line += ',';
     } else {
-      line += "[" + String(traceEntry.det) + "],"; 
+      line += "[" + String(traceEntry.det) + "],";
     }
   }
-  line.remove(line.length()-1);  
+  line.remove(line.length()-1);
   log("Trace: %s", line.c_str());
 }
