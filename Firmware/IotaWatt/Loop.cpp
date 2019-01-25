@@ -34,25 +34,23 @@ void loop()
   // Send dummy message to Firestore
   #define FIRESTORE_PROXY_IP "192.168.86.21"
   #define FIRESTORE_PROXY_PORT 12000
-  // generate data to firestore once a second
   #define INTER_SEND_TIME_MS 1000 // 1 second
   static uint32_t last_send_ms = 0;
+  WiFiUDP udp;
+  StaticJsonBuffer<500> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  char replyPacket[1024];
   uint32_t current_time_ms = millis();
+  root["meas_time_ms"] = current_time_ms;
+  root["meas_rtc_time_sec"] = rtc.now().unixtime();
+  root.printTo(replyPacket);
   if ((current_time_ms - last_send_ms) >= INTER_SEND_TIME_MS)
   {
-
-     WiFiUDP udp;
-     StaticJsonBuffer<500> jsonBuffer;
-     JsonObject& root = jsonBuffer.createObject();
-     char replyPacket[1024];
-     root["time"] = current_time_ms;
-     root.printTo(replyPacket);
-
      udp.beginPacket(FIRESTORE_PROXY_IP, FIRESTORE_PROXY_PORT);
      udp.write(replyPacket);
      udp.endPacket();
 
-     last_send_ms = current_time_ms;
+     last_send_ms = millis();
    }
 
   // --------- Give web server a shout out.

@@ -14,7 +14,7 @@ import json
 # uses the local time (ms) as the document name
 
 # Connect to firestore database
-cred = credentials.Certificate('wellshire-testbed-firebase-adminsdk-cdfa8-ade79ce610.json')
+cred = credentials.Certificate('../wellshire-testbed-firebase-adminsdk-cdfa8-ade79ce610.json')
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
