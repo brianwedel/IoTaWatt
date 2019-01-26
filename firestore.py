@@ -13,6 +13,13 @@ import json
 # a new Firestore db document for each received payload.  The proxy server
 # uses the local time (ms) as the document name
 
+def reset_accum_samples():
+    current_time_ms = int(round(time.time() * 1000))
+    accum_samples = {
+        "start_time_ms" : current_time_ms,
+        "samples" : []}
+    return accum_samples
+
 # Connect to firestore database
 cred = credentials.Certificate('../wellshire-testbed-firebase-adminsdk-cdfa8-ade79ce610.json')
 firebase_admin.initialize_app(cred)
@@ -25,14 +32,26 @@ soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 soc.bind(('', 12000))
 
 # Server loop to forward data to firestore database
+first_sample = True
 while True:
     # Receive the client packet along with the address it is coming from
     message, address = soc.recvfrom(1024)
+    if first_sample:
+        accum_samples = reset_accum_samples()
+        first_sample = False
+
     print(address)
     print(message)
 
     data = json.loads(message)
-    current_time_ms = int(round(time.time() * 1000))
+    current_time_ms = int(round(time.time() * 1000))    
+    accum_samples["samples"].append(data)
 
-    doc_ref = db.collection(u'house').document(u'kTwB5pLnvThWmqcqIvaU').collection('meas').document(str(current_time_ms))
-    doc_ref.set(data)
+    if len(accum_samples["samples"]) >= 40:
+        doc_ref = db.collection(u'house').document(u'kTwB5pLnvThWmqcqIvaU').collection('meas').document(
+            str(accum_samples["start_time_ms"]))
+        doc_ref.set(accum_samples)
+        print("Sending samples to firestore")
+
+        # reset first sample flag
+        first_sample = True

@@ -1,6 +1,7 @@
 #include "IotaWatt.h"
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
+#include <assert.h>
 
 void loop()
 {
@@ -33,19 +34,22 @@ void loop()
 
   // Send dummy message to Firestore
   #define FIRESTORE_PROXY_IP "192.168.86.21"
-  #define FIRESTORE_PROXY_PORT 12000
-  #define INTER_SEND_TIME_MS 1000 // 1 second
+  #define FIRESTORE_PROXY_PORT 12000 // hardcoded in firestore.py
+  #define INTER_SEND_TIME_MS 250
   static uint32_t last_send_ms = 0;
   WiFiUDP udp;
   StaticJsonBuffer<500> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
-  char replyPacket[1024];
+  char replyPacket[1048];
   uint32_t current_time_ms = millis();
   root["meas_time_ms"] = current_time_ms;
-  root["meas_rtc_time_sec"] = rtc.now().unixtime();
+  root["channel1_power_meas"] = (inputChannel[1]->isActive()) ? int(inputChannel[1]->getPower()) : 0;
+  root["channel2_power_meas"] = (inputChannel[2]->isActive()) ? int(inputChannel[2]->getPower()) : 0;
   root.printTo(replyPacket);
+
   if ((current_time_ms - last_send_ms) >= INTER_SEND_TIME_MS)
   {
+     // Send
      udp.beginPacket(FIRESTORE_PROXY_IP, FIRESTORE_PROXY_PORT);
      udp.write(replyPacket);
      udp.endPacket();

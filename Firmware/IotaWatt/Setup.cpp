@@ -190,17 +190,10 @@ if(spiffsBegin()){
   log("HTTP server started");
   WiFi.mode(WIFI_STA);
 
-  // Get Google Authentication Token
-  #define FIREBASE_PROJECT "wellshire-testbed"
-  #define FIREBASE_WEB_API_KEY "AIzaSyCuijeNPvzmuSDVNFM4D_EAPh-_uGmkUqo"
-  #define FIREBASE_USERNAME "brian.wedel@gmail.com"
-  #define FIREBASE_PASSWORD "Rowan&Wes"
-  #define GOOGLE_AUTH_URL = ""
-
  //*************************************** Start the logging services *********************************
 
   NewService(WiFiService, T_WiFi);
-  NewService(timeSync, T_timeSync);
+  //NewService(timeSync, T_timeSync); // NTP sometimes doesn't sync
   NewService(statService, T_stats);
   NewService(updater, T_UPDATE);
   NewService(dataLog, T_datalog);
