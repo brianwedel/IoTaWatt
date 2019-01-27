@@ -16,7 +16,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.   
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ***********************************************************************************/
 #define IOTAWATT_VERSION "02_03_20"
 
@@ -79,6 +79,9 @@ extern RTC_PCF8523 rtc;
 extern Ticker ticker;
 extern messageLog msglog;
 
+extern char *firestore_proxy_host;
+extern int32_t firestore_proxy_port;
+
 #define MS_PER_HOUR   3600000UL
 #define SEVENTY_YEAR_SECONDS  2208988800UL
 
@@ -140,16 +143,16 @@ extern traceUnion traceEntry;
 #define T_WEB 10           // (30)Web server handlers
 #define T_CONFIG 11        //  Get Config
 #define T_encryptEncode 12 //  base64encode and encryptData in EmonService
-#define T_uploadGraph 13 
+#define T_uploadGraph 13
 #define T_history 14
 #define T_base64 15        // base 64 encode
 #define T_EmonConfig 16    // Emon configuration
-#define T_influxConfig 17  // influx configuration 
-#define T_stats 18         // Stat service 
+#define T_influxConfig 17  // influx configuration
+#define T_stats 18         // Stat service
 #define T_datalog 19       // datalog service
-#define T_timeSync 20      // timeSync service 
+#define T_timeSync 20      // timeSync service
 #define T_WiFi 21          // WiFi service
-#define T_PVoutput 22      // PVoutput class     
+#define T_PVoutput 22      // PVoutput class
 
       // LED codes
 
@@ -190,7 +193,7 @@ extern serviceBlock* serviceQueue;     // Head of ordered list of services
       // Can be specified in config.device.aref
       // Voltage adjustments are the values for AC reference attenuation in IotaWatt 2.1.
 
-#define MAXINPUTS 15                          // Compile time input channels, can't be changed easily 
+#define MAXINPUTS 15                          // Compile time input channels, can't be changed easily
 extern IotaInputChannel* *inputChannel;       // -->s to incidences of input channels (maxInputs entries)
 extern uint8_t  maxInputs;                    // channel limit based on configured hardware (set in Config)
 extern float    VrefVolts;                    // Voltage reference shunt value used to calibrate
@@ -220,26 +223,26 @@ extern ScriptSet* outputs;
 #define DBG_OUTPUT_PORT Serial
 extern bool     hasSD;
 extern File     uploadFile;
-extern SHA256*  uploadSHA;  
+extern SHA256*  uploadSHA;
 extern boolean  serverAvailable;          // Set false when asynchronous handler active to avoid new requests
 extern boolean  wifiConnected;
 extern uint8_t  configSHA256[32];         // Hash of config file
 
-#define HTTPrequestMax 2                  // Maximum number of concurrent HTTP requests  
+#define HTTPrequestMax 2                  // Maximum number of concurrent HTTP requests
 extern int16_t  HTTPrequestFree;          // Request semaphore
 extern uint32_t HTTPrequestStart[HTTPrequestMax]; // request start time tokens
 extern uint16_t HTTPrequestId[HTTPrequestMax];    // Module ID of requestor
-extern uint32_t HTTPlock;                 // start time token of locking request      
+extern uint32_t HTTPlock;                 // start time token of locking request
 
-extern uint8_t*   adminH1;                // H1 digest md5("admin":"admin":password) 
-extern uint8_t*   userH1;                 // H1 digest md5("user":"user":password) 
-extern authSession* authSessions;         // authSessions list head; 
-extern uint16_t   authTimeout;            // Timeout interval of authSession in seconds;   
+extern uint8_t*   adminH1;                // H1 digest md5("admin":"admin":password)
+extern uint8_t*   userH1;                 // H1 digest md5("user":"user":password)
+extern authSession* authSessions;         // authSessions list head;
+extern uint16_t   authTimeout;            // Timeout interval of authSession in seconds;
 
       // ****************************** Timing and time data *************************
 #define  SEVENTY_YEAR_SECONDS 2208988800UL
 extern int32_t  localTimeDiff;                 // Local time Difference in minutes
-extern tzRule*  timezoneRule;                  // Rule for DST 
+extern tzRule*  timezoneRule;                  // Rule for DST
 extern uint32_t programStartTime;;             // Time program started (UnixTime)
 extern uint32_t timeRefNTP;                    // Last time from NTP server (NTPtime)
 extern uint32_t timeRefMs;                     // Internal MS clock corresponding to timeRefNTP
@@ -251,7 +254,7 @@ extern uint32_t updaterServiceInterval;        // Interval (sec) to check for so
 
 extern bool     hasRTC;
 extern bool     RTCrunning;
-extern bool     powerFailRestart;               // Set true on power fail restart (detected by RTC)  
+extern bool     powerFailRestart;               // Set true on power fail restart (detected by RTC)
 
 extern char     ledColor[12];                   // Pattern to display led, each char is 500ms color - R, G, Blank
 extern uint8_t  ledCount;                       // Current index into cycle
@@ -262,7 +265,7 @@ extern const char*    updatePath;
 extern char*          updateClass;            // NONE, MAJOR, MINOR, BETA, ALPHA, TEST
 extern const uint8_t  publicKey[32];
 extern const char     hexcodes_P[];
-extern const char     base64codes_P[];  
+extern const char     base64codes_P[];
 
       // ************************ ADC sample pairs ************************************
 
@@ -274,7 +277,7 @@ extern int16_t Isample [MAX_SAMPLES];
       // ************************ Declare global functions
 void      setup();
 void      loop();
-void      trace(const uint8_t module, const uint8_t id, const uint8_t det=0); 
+void      trace(const uint8_t module, const uint8_t id, const uint8_t det=0);
 void      logTrace(void);
 
 void      NewService(uint32_t (*serviceFunction)(struct serviceBlock*), const uint8_t taskID=0);

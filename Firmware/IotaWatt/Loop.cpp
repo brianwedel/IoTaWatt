@@ -32,9 +32,7 @@ void loop()
     lastChannel = nextChannel;
   }
 
-  // Send dummy message to Firestore
-  #define FIRESTORE_PROXY_IP "192.168.86.21"
-  #define FIRESTORE_PROXY_PORT 12000 // hardcoded in firestore.py
+  // Forward last power reading on channel1 and channel2 to the firestore proxy
   #define INTER_SEND_TIME_MS 250
   static uint32_t last_send_ms = 0;
   WiFiUDP udp;
@@ -50,7 +48,7 @@ void loop()
   if ((current_time_ms - last_send_ms) >= INTER_SEND_TIME_MS)
   {
      // Send
-     udp.beginPacket(FIRESTORE_PROXY_IP, FIRESTORE_PROXY_PORT);
+     udp.beginPacket(firestore_proxy_host, firestore_proxy_port);
      udp.write(replyPacket);
      udp.endPacket();
 
