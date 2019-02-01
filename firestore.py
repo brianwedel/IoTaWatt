@@ -5,6 +5,7 @@ from firebase_admin import firestore
 import time
 import socket
 import json
+import logging
 
 # Proxy server for Firestore database
 # Listen for UDP datagrams on port 12000, expecting a JSON string payload
@@ -19,6 +20,12 @@ def reset_accum_samples():
         "start_time_ms" : current_time_ms,
         "samples" : []}
     return accum_samples
+
+logging.basicConfig(
+    filename='firestore.log',
+    filemode='w',
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s')
 
 # Connect to firestore database
 cred = credentials.Certificate('../wellshire-testbed-firebase-adminsdk-cdfa8-ade79ce610.json')
@@ -40,18 +47,22 @@ while True:
         accum_samples = reset_accum_samples()
         first_sample = False
 
-    print(address)
-    print(message)
+    try:
+        data = json.loads(message)
+    except json.JSONDecodeError:
+        logging.error("Invalid data payload {}".format(message))
 
-    data = json.loads(message)
     current_time_ms = int(round(time.time() * 1000))    
     accum_samples["samples"].append(data)
 
     if len(accum_samples["samples"]) >= 40:
-        doc_ref = db.collection(u'house').document(u'kTwB5pLnvThWmqcqIvaU').collection('meas').document(
-            str(accum_samples["start_time_ms"]))
-        doc_ref.set(accum_samples)
-        print("Sending samples to firestore")
+        try:
+            doc_ref = db.collection(u'house').document(u'kTwB5pLnvThWmqcqIvaU').collection('meas').document(
+                str(accum_samples["start_time_ms"]))
+            doc_ref.set(accum_samples)
+        except Exception as e:
+            logging.error("Exception occured while interacting with Firestore: " + str(e))
+            logging.error(traceback.format_exc())
 
         # reset first sample flag
         first_sample = True
