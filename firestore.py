@@ -51,6 +51,7 @@ while True:
         data = json.loads(message)
     except json.JSONDecodeError:
         logging.error("Invalid data payload {}".format(message))
+        data = {}
 
     current_time_ms = int(round(time.time() * 1000))    
     accum_samples["samples"].append(data)
