@@ -1,6 +1,7 @@
 import numpy
 from scipy import integrate
 import matplotlib.pyplot as plt
+import matplotlib.dates as md
 
 import firebase_admin
 from firebase_admin import credentials
@@ -8,6 +9,7 @@ from firebase_admin import firestore
 
 import json
 import time
+import datetime
 
 # Connect to firestore database
 cred = credentials.Certificate('../wellshire-testbed-firebase-adminsdk-cdfa8-ade79ce610.json')
@@ -48,7 +50,14 @@ class EnergyCalculator:
             return r/(1000*60*60)
 
     def plot(self):
-        plt.plot(self.timestamp, self.power_meas)
+        dt = [datetime.datetime.fromtimestamp(t) for t in self.timestamp]
+        plt.subplots_adjust(bottom=0.2)
+        plt.xticks( rotation=25 )
+        ax=plt.gca()
+        xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
+        ax.xaxis.set_major_formatter(xfmt)
+
+        plt.plot(md.date2num(dt), self.power_meas)
         plt.show()
 
 if __name__ == "__main__":
