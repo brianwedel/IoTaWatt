@@ -1,5 +1,6 @@
 import numpy
 from scipy import integrate
+import matplotlib.pyplot as plt
 
 import firebase_admin
 from firebase_admin import credentials
@@ -20,8 +21,8 @@ class EnergyCalculator:
 
         docs = db.collection(u'house').document(u'kTwB5pLnvThWmqcqIvaU').collection('meas').where(
            u'start_time_ms', u'>', start_time*1000).where(u'start_time_ms', u'<', end_time*1000).get()
+
         self.data = [d.to_dict() for d in docs]
-        print("Number of samples: {}".format(len(self.data)))
 
         self.power_meas = []
         self.timestamp = []
@@ -29,8 +30,13 @@ class EnergyCalculator:
         # Each measurement is 10 second interval with a timestamp "start_time_ms"
         # Just use the first sample
         for d in self.data:
-            self.power_meas.append(d["samples"][0]["channel1_power_meas"] + d["samples"][0]["channel2_power_meas"])
-            self.timestamp.append(d["start_time_ms"]/1000.0)
+            remote_time_ref = d["samples"][0]["meas_time_ms"]
+            for s in d["samples"]:
+                self.power_meas.append(s["channel1_power_meas"] + s["channel2_power_meas"])
+                timestamp = (d["start_time_ms"] + s["meas_time_ms"] - remote_time_ref)/1000.0
+                self.timestamp.append(timestamp)
+
+        print("Number of samples: {}".format(len(self.power_meas)))
 
     def energy_kwh(self):
         if len(self.timestamp) == 0:
@@ -41,12 +47,16 @@ class EnergyCalculator:
             # Convert joules (ws) to kwh
             return r/(1000*60*60)
 
+    def plot(self):
+        plt.plot(self.timestamp, self.power_meas)
+        plt.show()
 
 if __name__ == "__main__":
 
-    start_time = time.mktime((2019, 2, 1, 0, 0, 0, -1, -1, -1))
+    start_time = time.mktime((2019, 2, 2, 0, 0, 0, -1, -1, -1))
     end_time = time.mktime((2019, 2, 3, 0, 0, 0, -1, -1, -1))
 
     e = EnergyCalculator(start_time, end_time)
 
     print("Energy: {} kwh".format(round(e.energy_kwh(), ndigits=3)))
+    e.plot()
