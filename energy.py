@@ -1,87 +1,52 @@
-import random
-
 import numpy
 from scipy import integrate
 
-# Input is power samples of the format
-# [{
-#     "timestamp_ms" :
-#     "main0_power_watt" :
-#     "main1_power_watt" :
-# }]
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 
-def gen_meas_rand(prev_meas):
-    return prev_meas + random.randint(-50,50)
+import json
+import time
 
-def gen_meas_const(prev_meas):
-    return prev_meas
-
-def gen_test_data(
-        num_samples=1,
-        sample_rate_samples_per_sec=5,
-        start_timestamp_ms=0,
-        start_power_meas_watt=0,
-        power_model=gen_meas_const):
-
-    running_timestamp_ms = start_timestamp_ms
-    data_array = [
-        {
-            "timestamp_ms" : running_timestamp_ms,
-            "main0_power_watt" : power_model(start_power_meas_watt),
-            "main1_power_watt" : power_model(start_power_meas_watt)
-        }
-    ]
-
-    for i in range(1, num_samples):
-        running_timestamp_ms = (running_timestamp_ms
-                               + int((1/sample_rate_samples_per_sec)*1000))
-
-        data_array.append(
-            {
-                "timestamp_ms" : running_timestamp_ms,
-                "main0_power_watt" : power_model(data_array[-1]["main0_power_watt"]),
-                "main1_power_watt" : power_model(data_array[-1]["main1_power_watt"]),
-            })
-
-    return data_array
+# Connect to firestore database
+cred = credentials.Certificate('../wellshire-testbed-firebase-adminsdk-cdfa8-ade79ce610.json')
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 class EnergyCalculator:
     """ Calculate amount of energy used from stream of power measurements
     """
-    def __init__(self, power_meas):
-        self.power_meas = power_meas
-        self.num_samples = len(self.power_meas)
+    def __init__(self, start_time, end_time):
 
-        # Assume array is ordered
-        self.num_seconds = (self.power_meas[-1]["timestamp_ms"]
-                            - self.power_meas[0]["timestamp_ms"])/1000
+        docs = db.collection(u'house').document(u'kTwB5pLnvThWmqcqIvaU').collection('meas').where(
+           u'start_time_ms', u'>', start_time*1000).where(u'start_time_ms', u'<', end_time*1000).get()
+        self.data = [d.to_dict() for d in docs]
+        print("Number of samples: {}".format(len(self.data)))
+
+        self.power_meas = []
+        self.timestamp = []
+
+        # Each measurement is 10 second interval with a timestamp "start_time_ms"
+        # Just use the first sample
+        for d in self.data:
+            self.power_meas.append(d["samples"][0]["channel1_power_meas"] + d["samples"][0]["channel2_power_meas"])
+            self.timestamp.append(d["start_time_ms"]/1000.0)
 
     def energy_kwh(self):
-        power_meas = [m["main0_power_watt"] for m in self.power_meas]
-        # Convert timestamp from msec to sec
-        timestamp = [m["timestamp_ms"]/1000 for m in self.power_meas]
+        if len(self.timestamp) == 0:
+            return 0
+        else:
+            r = integrate.simps(self.power_meas, self.timestamp)
 
-        r = integrate.simps(power_meas, timestamp)
-
-        # Convert joules (ws) to kwh
-        return r/(1000*60*60)
+            # Convert joules (ws) to kwh
+            return r/(1000*60*60)
 
 
 if __name__ == "__main__":
 
-    target_time_sec = 60*60*24 # 24 hr
-    sample_rate = 5 # 5 samples per second
+    start_time = time.mktime((2019, 2, 1, 0, 0, 0, -1, -1, -1))
+    end_time = time.mktime((2019, 2, 3, 0, 0, 0, -1, -1, -1))
 
-    a = gen_test_data(
-        num_samples = (target_time_sec*sample_rate),
-        sample_rate_samples_per_sec = sample_rate,
-        start_timestamp_ms = 15478893849,
-        start_power_meas_watt = 1000,
-        power_model = gen_meas_const)
+    e = EnergyCalculator(start_time, end_time)
 
-    e = EnergyCalculator(a)
-
-    print("\nEnergy: {} kwh \nTime duration: {} seconds ({} samples)".format(
-        round(e.energy_kwh(), ndigits=3),
-        e.num_seconds,
-        e.num_samples))
+    print("Energy: {} kwh".format(round(e.energy_kwh(), ndigits=3)))
