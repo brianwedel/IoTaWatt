@@ -139,6 +139,8 @@ class EnergyCalculator:
             # Convert joules (ws) to kwh
             energy = r/(1000*60*60)
             print("Energy: {} kwh".format(round(energy, ndigits=3)))
+            dur_min = round((self.timestamp[end_time_index] - self.timestamp[start_time_index])/60.0, ndigits=3)
+            print("Duration: {} min".format(dur_min))
             return energy
 
     def plot(self):
@@ -167,11 +169,10 @@ class EnergyCalculator:
 if __name__ == "__main__":
 
 
-    # mktime takes local time_struct tuple and converts to seconds since the epoch
+    # mktime takes local time_struct tuple and converts to UTC timestamp
+    # currently plot view displays in UTC
     start_time = time.mktime((2019, 2, 2, 17, 0, 0, -1, -1, -1))
     end_time = time.mktime((2019, 2, 3, 17, 0, 0, -1, -1, -1))
-    print("initial start {}".format(start_time))
-    print("initial end   {}".format(end_time))
 
     e = EnergyCalculator(start_time, end_time)
     e.energy_kwh(start_time, end_time)
