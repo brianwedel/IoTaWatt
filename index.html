@@ -1,0 +1,87 @@
+<html>
+<head>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
+   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+   <style>
+   div { color: #111; font-family: 'Open Sans', sans-serif; font-size: 20px; font-weight: 300; line-height: 32px; margin: 0 0 5px; text-align: center; }
+   </style>
+</head>
+<body>
+   <div style="top:60px; left:10px; width:800px; height:800px;">
+      <div id="house_id">Loading</div>
+      <div id="date"></div>
+      <div id="energy"></div>
+      <canvas id="myChart"></convas>
+   </div>
+
+<script>
+var chartColors = {
+   red: 'rgb(255,99,132)',
+   blue: 'rgb(54,162,235)'
+};
+var request = new XMLHttpRequest();
+request.open('GET', 'https://2ha8b0sr03.execute-api.us-west-2.amazonaws.com/default/userInterfaceMeasHttp?house_id=7905%20Wellshire%20Ct', true);
+request.onload = function() {
+   var raw_data = JSON.parse(this.responseText);
+   
+   // Update summary info
+   $("#house_id").html(raw_data['house_id'])
+   $("#date").html(raw_data['date_str'])
+   $("#energy").html("Total Energy Used: " + raw_data['total_energy_kwh'] + " kwh") 
+
+   var config = {
+      type: 'line',
+      data: {
+         labels: Array.from(Array(raw_data["max_power"].length).keys()),
+         datasets: [{
+            label: 'Max Power',
+            backgroundColor: chartColors.red,
+            borderColor: chartColors.red,
+            data: raw_data["max_power"],
+            fill: false,
+            pointRadius: 0,
+            lineTension: 0,
+            borderWidth: 2
+         }, {
+            label: 'Avg Power',
+            backgroundColor: chartColors.blue,
+            borderColor: chartColors.blue,
+            data: raw_data["avg_power"],
+            fill: false,
+            pointRadius: 0,
+            lineTension: 0,
+            borderWidth: 2
+         }]
+      },
+      options: {
+         responsive: true,
+         title: {
+            display: true,
+            text: 'Power/Energy'
+         },
+         scales: {
+            xAxes: [{
+               display: true,
+               scaleLabel: {
+                  display: true,
+                  labelString: 'Time (6min bucket)'
+               }
+            }],
+            yAxes: [{
+               display: true,
+               scaleLabel: {
+                  display: true,
+                  labelString: 'Power (Watt)'
+               }
+             }]
+         }
+      }
+   };
+   var ctx = document.getElementById("myChart").getContext('2d');
+   var myChart = new Chart(ctx, config);
+}
+request.send();
+</script>
+
+</body>
+</html>
