@@ -15,6 +15,7 @@
  */
  '''
 
+import ProducerConsumerHub
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 import logging
 import time
@@ -113,6 +114,9 @@ myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
 myAWSIoTMQTTClient.connect()
 time.sleep(2)
 
+# Connect to replication prod/cons hub
+replication_prod = ProducerConsumerHub.Producer('', 12001)
+
 # Server loop to forward data to firestore database
 while True:
     # Reset sample struct each 40 samples    
@@ -133,5 +137,6 @@ while True:
     try:
         messageJson = json.dumps(accum_samples)
         myAWSIoTMQTTClient.publish(topic, messageJson, 1)
+        replication_prod.send_msg(messageJson)
     except Exception as e:
         logging.error("Exception occured while publishing to AWS IOT: " + str(e))
