@@ -7,6 +7,8 @@
    </style>
 </head>
 <body>
+   <input name="house_id_input" id="house_id_input" type="text" size="20"/>
+   <input type="button" id="update_house_id" value="Update"/>
    <div style="top:60px; left:10px; width:800px; height:800px;">
       <div id="house_id">Loading</div>
       <div id="date"></div>
@@ -19,21 +21,44 @@ var chartColors = {
    red: 'rgb(255,99,132)',
    blue: 'rgb(54,162,235)'
 };
-var request = new XMLHttpRequest();
-request.open('GET', 'https://2ha8b0sr03.execute-api.us-west-2.amazonaws.com/default/userInterfaceMeasHttp?house_id=7905%20Wellshire%20Ct', true);
-request.onload = function() {
-   var raw_data = JSON.parse(this.responseText);
-   
-   // Update summary info
-   $("#house_id").html(raw_data['house_id'])
-   $("#date").html(raw_data['date_str'])
-   $("#energy").html("Total Energy Used: " + raw_data['total_energy_kwh'] + " kwh") 
 
-   var config = {
-      type: 'line',
-      data: {
-         labels: Array.from(Array(raw_data["max_power"].length).keys()),
-         datasets: [{
+$(function(){
+
+   // Click the update button action
+   $("#update_house_id").click(function(){
+      update_graph($('#house_id_input').val());
+   });
+   // Hit enter in the input text action
+   $("#house_id_input").on("keypress", function(e) {
+      if (e.keyCode == 13) {
+         update_graph($('#house_id_input').val())
+      }
+   });
+
+   // Initial graph rendering
+   var default_house_id = "7905 Wellshire Ct";
+   $('#house_id_input').val(default_house_id);
+   update_graph($('#house_id_input').val());
+});
+
+function update_graph(house_id) {
+   var request_host = 'https://2ha8b0sr03.execute-api.us-west-2.amazonaws.com'
+   var request_uri = encodeURI("default/userInterfaceMeasHttp?house_id=" + house_id)
+   var request = new XMLHttpRequest();
+   request.open('GET', request_host + "/" + request_uri, true);
+
+   request.onload = function() {
+     var raw_data = JSON.parse(this.responseText);
+     // Update summary info
+     $("#house_id").html(raw_data['house_id'])
+     $("#date").html(raw_data['date_str'])
+     $("#energy").html("Total Energy Used: " + raw_data['total_energy_kwh'] + " kwh") 
+
+     var config = {
+        type: 'line',
+        data: {
+           labels: Array.from(Array(raw_data["max_power"].length).keys()),
+           datasets: [{
             label: 'Max Power',
             backgroundColor: chartColors.red,
             borderColor: chartColors.red,
@@ -79,8 +104,9 @@ request.onload = function() {
    };
    var ctx = document.getElementById("myChart").getContext('2d');
    var myChart = new Chart(ctx, config);
-}
+  }
 request.send();
+}
 </script>
 
 </body>
