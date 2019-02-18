@@ -1,109 +1,53 @@
-'''
-/*
- * Copyright 2010-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- *  http://aws.amazon.com/apache2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- */
- '''
-
 import ProducerConsumerHub
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 import logging
 import time
-import argparse
 import json
-import socket
+from daemon import Daemon
 
 '''
-Replicate data sinked by as a consumer and inject into AWS IoT core with different House ID
+Replicate data published to the producer/consumer hub and send into AWS IoT core with different House ID
 '''
 
-# Read in command-line parameters
-parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--endpoint", action="store", required=True, dest="host", help="Your AWS IoT custom endpoint")
-parser.add_argument("-r", "--rootCA", action="store", required=True, dest="rootCAPath", help="Root CA file path")
-parser.add_argument("-c", "--cert", action="store", dest="certificatePath", help="Certificate file path")
-parser.add_argument("-k", "--key", action="store", dest="privateKeyPath", help="Private key file path")
-parser.add_argument("-p", "--port", action="store", dest="port", type=int, help="Port number override")
-parser.add_argument("-w", "--websocket", action="store_true", dest="useWebsocket", default=False,
-                    help="Use MQTT over WebSocket")
-parser.add_argument("-id", "--clientId", action="store", dest="clientId", default="basicPubSub",
-                    help="Targeted client id")
+class HouseReplicator(Daemon):
+   def __init__(self, house_id, client_id, aws_host, root_ca_path, cert_path, private_key_path, pid_file):
+      super().__init__(pid_file)
+      self.house_id = house_id
+      self.aws_host = aws_host
+      self.root_ca_path = root_ca_path
+      self.cert_path = cert_path
+      self.private_key_path = private_key_path
+      self.clientId = client_id
+      self.topic = "meas"
 
-parser.add_argument("-hid", "--houseId", action="store", dest="house_id", default="replica")
+      # non-WebSocket, default to 8883
+      self.port = 8883
 
-args = parser.parse_args()
-host = args.host
-rootCAPath = args.rootCAPath
-certificatePath = args.certificatePath
-privateKeyPath = args.privateKeyPath
-port = args.port
-useWebsocket = args.useWebsocket
-clientId = args.clientId
-new_house_id = args.house_id
-topic = "meas"
+   def consumer_callback(self, msg):
+      msg_dict = json.loads(msg)
+      msg_dict["house_id"] = self.house_id
+      try:
+         self.myAWSIoTMQTTClient.publish(self.topic, json.dumps(msg_dict), 1)
+      except Exception as e:
+         logging.error("Exception occured {}".format(str(e)))
 
-if args.useWebsocket and args.certificatePath and args.privateKeyPath:
-    parser.error("X.509 cert authentication and WebSocket are mutual exclusive. Please pick one.")
-    exit(2)
+   def run(self):
+      # Init AWSIoTMQTTClient
+      self.myAWSIoTMQTTClient = AWSIoTMQTTClient(self.clientId)
+      self.myAWSIoTMQTTClient.configureEndpoint(self.aws_host, self.port)
+      self.myAWSIoTMQTTClient.configureCredentials(self.root_ca_path, self.private_key_path, self.cert_path)
 
-if not args.useWebsocket and (not args.certificatePath or not args.privateKeyPath):
-    parser.error("Missing credentials for authentication.")
-    exit(2)
+      # AWSIoTMQTTClient connection configuration
+      self.myAWSIoTMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
+      self.myAWSIoTMQTTClient.configureOfflinePublishQueueing(-1)  # Infinite offline Publish queueing
+      self.myAWSIoTMQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz
+      self.myAWSIoTMQTTClient.configureConnectDisconnectTimeout(20)  # 10 sec
+      self.myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
 
-# Port defaults
-if args.useWebsocket and not args.port:  # When no port override for WebSocket, default to 443
-    port = 443
-if not args.useWebsocket and not args.port:  # When no port override for non-WebSocket, default to 8883
-    port = 8883
+      # Connect to AWS IoT
+      self.myAWSIoTMQTTClient.connect()
+      time.sleep(2)
 
-# Configure logging
-logger = logging.getLogger("AWSIoTPythonSDK.core")
-logger.setLevel(logging.DEBUG)
-streamHandler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-streamHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
-
-# Init AWSIoTMQTTClient
-myAWSIoTMQTTClient = None
-if useWebsocket:
-    myAWSIoTMQTTClient = AWSIoTMQTTClient(clientId, useWebsocket=True)
-    myAWSIoTMQTTClient.configureEndpoint(host, port)
-    myAWSIoTMQTTClient.configureCredentials(rootCAPath)
-else:
-    myAWSIoTMQTTClient = AWSIoTMQTTClient(clientId)
-    myAWSIoTMQTTClient.configureEndpoint(host, port)
-    myAWSIoTMQTTClient.configureCredentials(rootCAPath, privateKeyPath, certificatePath)
-
-# AWSIoTMQTTClient connection configuration
-myAWSIoTMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
-myAWSIoTMQTTClient.configureOfflinePublishQueueing(-1)  # Infinite offline Publish queueing
-myAWSIoTMQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz
-myAWSIoTMQTTClient.configureConnectDisconnectTimeout(10)  # 10 sec
-myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
-
-# Connect and subscribe to AWS IoT
-myAWSIoTMQTTClient.connect()
-time.sleep(2)
-
-def replicate(msg):
-    msg_dict = json.loads(msg)
-    msg_dict["house_id"] = new_house_id
-    try:
-        myAWSIoTMQTTClient.publish(topic, json.dumps(msg_dict), 1)
-    except Exception as e:
-        logging.error("Exception occured {}".format(str(e)))
-
-# Connect to replication prod/cons hub as a consumer
-replication_cons = ProducerConsumerHub.Consumer('', 12001)
-replication_cons.run(replicate)
+      # Connect to replication prod/cons hub as a consumer
+      replication_cons = ProducerConsumerHub.Consumer('', 12001)
+      replication_cons.run(self.consumer_callback)
