@@ -1,5 +1,7 @@
+from daemon import Daemon
 import socket
 import threading
+import argparse
 
 '''
 # Server listens to port 12001, supports connection of 1 producer and >=1 consumers.
@@ -54,16 +56,24 @@ class Consumer(object):
                  break
 
 
-class Hub(object):
-    def __init__(self, host, port):
+class Hub(Daemon):
+    def __init__(self, host, port, pid_file):
+        super().__init__(pid_file)
         self.host = host
         self.port = port
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind((self.host, self.port))
         self.client_sock_lock = threading.Lock()
         self.consumer_list = []
         self.producer_connected = False
+
+    # Daemon entry point
+    def run(self):
+        self.connect()
+        return self.listen()
+
+    def connect(self): 
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind((self.host, self.port))
 
     def parse_data(byte_data, prev_data_str):
        all_data = prev_data_str.encode() + byte_data
@@ -132,4 +142,13 @@ class Hub(object):
                return False
 
 if __name__ == "__main__":
-    sim = Hub('',12001).listen()
+    # Daemon control interface
+    parser = argparse.ArgumentParser(description='Single Producer/Multi Consumer message passing hub server (localhost:12001)')
+    parser.add_argument('command', type=str, choices=['start','stop'])
+    args = parser.parse_args()
+    d = Hub('',12001, '/tmp/hub.pid')
+
+    if args.command == "start":
+       d.start()
+    elif args.command == "stop":
+       d.stop()
