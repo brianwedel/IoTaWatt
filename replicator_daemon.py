@@ -20,7 +20,7 @@ pid_file = '/tmp/replicator_daemon{}.pid'
 
 d = HouseReplicator(
       house_id_base.format(args.instance),
-      'basicPubSub', #client_id_base.format(i),
+      client_id_base.format(args.instance),
       aws_host,
       root_ca_path,
       cert_path,
