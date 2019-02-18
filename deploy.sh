@@ -1,5 +1,4 @@
 PYTHON=../venv/bin/python
-#../venv/bin/python ./aws_iot_proxy.py -e a5zxmnr1dzhfm-ats.iot.us-west-2.amazonaws.com -r /tmp/AmazonRootCA.pem -c /tmp/68f6251505-certificate.pem.crt -k /tmp/68f6251505-private.pem.key
 CMD=$1
 
 function hub_ctrl() {
@@ -15,8 +14,7 @@ function replicator_ctrl() {
 }
 
 function iotawatt_proxy_ctrl() {
-   echo "test"
-   #$PYTHON ./aws_iot_proxy.py $CMD
+   $PYTHON ./iota_watt_proxy.py $CMD
 }
 
 # Order of start/stop is important since the replicators

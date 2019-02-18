@@ -1,19 +1,3 @@
-'''
-/*
- * Copyright 2010-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- *  http://aws.amazon.com/apache2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- */
- '''
 from daemon import Daemon
 from aws_iot_client import AwsIotClient
 import ProducerConsumerHub
@@ -36,7 +20,7 @@ class IotaWattProxy(Daemon, AwsIotClient):
           "house_id" : self.house_id,
           "timestamp" : current_time_ms,
           "samples" : []}
-       return accum_samples
+      return accum_samples
 
    # Daemon entry point
    def run(self):
@@ -59,7 +43,7 @@ class IotaWattProxy(Daemon, AwsIotClient):
       # Server loop to forward data to firestore database
       while True:
          # Reset sample struct each 40 samples    
-         accum_samples = reset_accum_samples()
+         accum_samples = self.reset_accum_samples()
 
          for s in range(0, 40):
             # Receive the client packet along with the address it is coming from
@@ -84,11 +68,36 @@ class IotaWattProxy(Daemon, AwsIotClient):
 
 if __name__ == "__main__":
 
-# Configure logging
-logger = logging.getLogger("AWSIoTPythonSDK.core")
-logger.setLevel(logging.INFO)
-streamHandler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-streamHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
    HOUSE_ID = "7905 Wellshire Ct"
+   # Configure logging
+   logger = logging.getLogger("AWSIoTPythonSDK.core")
+   logger.setLevel(logging.INFO)
+   fh = logging.FileHandler('/tmp/iotawatt_proxy.log')
+   formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+   fh.setFormatter(formatter)
+   logger.addHandler(fh)
+
+   parser = argparse.ArgumentParser(description='IotaWatt AWS proxy')
+   parser.add_argument('command', type=str, choices=['start','stop'])
+   args = parser.parse_args()
+
+   # Constant input params
+   aws_host = 'a5zxmnr1dzhfm-ats.iot.us-west-2.amazonaws.com'
+   root_ca_path = '/tmp/AmazonRootCA.pem'
+   cert_path = '/tmp/68f6251505-certificate.pem.crt'
+   private_key_path = '/tmp/68f6251505-private.pem.key'
+
+   d = IotaWattProxy(
+      HOUSE_ID,
+      'basicPubSub',
+      aws_host,
+      root_ca_path,
+      cert_path,
+      private_key_path,
+      '/tmp/iotawatt_proxy.pid')
+
+   if args.command == "start": 
+      d.start()
+   elif args.command == "stop":
+      d.stop()
+
