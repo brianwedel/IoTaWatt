@@ -8,6 +8,9 @@ from aws_iot_client import AwsIotClient
 '''
 Replicate data published to the producer/consumer hub and send into AWS IoT core with different House ID
 '''
+
+myLogger = logging.getLogger(__name__)
+
 class HouseReplicator(Daemon, AwsIotClient):
    def __init__(self, house_id, client_id, aws_host, root_ca_path, cert_path, private_key_path, pid_file):
       Daemon.__init__(self, pid_file)
@@ -21,7 +24,7 @@ class HouseReplicator(Daemon, AwsIotClient):
       try:
          self.publish(msg_dict)
       except Exception as e:
-         logging.error("Exception occured {}".format(str(e)))
+         myLogger.error("Exception occured {}".format(str(e)))
 
    def run(self):
       # Connect to Aws Iot Core

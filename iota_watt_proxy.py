@@ -7,6 +7,8 @@ import argparse
 import json
 import socket
 
+myLogger = logging.getLogger(__name__)
+
 class IotaWattProxy(Daemon, AwsIotClient):
    def __init__(self, house_id, client_id, aws_host, root_ca_path, cert_path, private_key_path, pid_file):
       Daemon.__init__(self, pid_file)
@@ -20,6 +22,7 @@ class IotaWattProxy(Daemon, AwsIotClient):
           "house_id" : self.house_id,
           "timestamp" : current_time_ms,
           "samples" : []}
+
       return accum_samples
 
    # Daemon entry point
@@ -51,7 +54,7 @@ class IotaWattProxy(Daemon, AwsIotClient):
             try:
                data = json.loads(message)
             except json.JSONDecodeError:
-               logging.error("Invalid data payload {}".format(message))
+               myLogger.error("Invalid data payload {}".format(message))
                data = {}
 
             accum_samples["samples"].append(data)
@@ -64,18 +67,29 @@ class IotaWattProxy(Daemon, AwsIotClient):
             messageJson = json.dumps(accum_samples)
             replication_prod.send_msg(messageJson)
          except Exception as e:
-            logging.error("Exception occured while publishing to AWS IOT: " + str(e))
+            myLogger.error("Exception occured while publishing to AWS IOT: " + str(e))
 
 if __name__ == "__main__":
 
    HOUSE_ID = "7905 Wellshire Ct"
+
    # Configure logging
-   logger = logging.getLogger("AWSIoTPythonSDK.core")
-   logger.setLevel(logging.INFO)
    fh = logging.FileHandler('/tmp/iotawatt_proxy.log')
    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
    fh.setFormatter(formatter)
+
+   logger = logging.getLogger("AWSIoTPythonSDK.core")
+   logger.setLevel(logging.INFO)
    logger.addHandler(fh)
+
+   # deamon logger catches exceptions in Daemon.run()
+   daemon_logger = logging.getLogger("daemon")
+   daemon_logger.setLevel(logging.INFO)
+   daemon_logger.addHandler(fh)
+
+   iota_watt_proxy_logger = logging.getLogger("iota_watt_proxy")
+   iota_watt_proxy_logger.setLevel(logging.INFO)
+   iota_watt_proxy_logger.addHandler(fh)
 
    parser = argparse.ArgumentParser(description='IotaWatt AWS proxy')
    parser.add_argument('command', type=str, choices=['start','stop'])

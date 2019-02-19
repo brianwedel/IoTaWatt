@@ -2,6 +2,8 @@ from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 import json
 import time
 
+# No local logger since everying is likely AWS MQTT lib logger
+
 class AwsIotClient():
    def __init__(self, client_id, aws_host, root_ca_path, cert_path, private_key_path):
       self.aws_host = aws_host

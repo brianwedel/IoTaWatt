@@ -1,6 +1,9 @@
 import sys, os, time, atexit
 from signal import SIGTERM
+import logging
  
+daemon_logger = logging.getLogger(__name__)
+
 class Daemon:
         """
         A generic daemon class.
@@ -81,7 +84,11 @@ class Daemon:
                
                 # Start the daemon
                 self.daemonize()
-                self.run()
+                try:
+                   self.run()
+                except:
+                   daemon_logger.exception("Exception in Daemon run()")
+                   raise
  
         def stop(self):
                 """
