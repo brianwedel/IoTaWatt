@@ -7,7 +7,7 @@ function hub_ctrl() {
 }
 
 function replicator_ctrl() {
-   NUM_REPLICATOR=10
+   NUM_REPLICATOR=30
    for i in `seq 1 $NUM_REPLICATOR`; do
       $PYTHON ./replicator_daemon.py $i $CMD
    done
