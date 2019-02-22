@@ -97,9 +97,9 @@ if __name__ == "__main__":
 
    # Constant input params
    aws_host = 'a5zxmnr1dzhfm-ats.iot.us-west-2.amazonaws.com'
-   root_ca_path = '/tmp/AmazonRootCA.pem'
-   cert_path = '/tmp/68f6251505-certificate.pem.crt'
-   private_key_path = '/tmp/68f6251505-private.pem.key'
+   root_ca_path = '/local/wellshire-testbed/aws_iot_cred/AmazonRootCA1.pem'
+   cert_path = '/local/wellshire-testbed/aws_iot_cred/68f6251505-certificate.pem.crt'
+   private_key_path = '/local/wellshire-testbed/aws_iot_cred/68f6251505-private.pem.key'
 
    d = IotaWattProxy(
       HOUSE_ID,

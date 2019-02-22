@@ -10,9 +10,9 @@ args = parser.parse_args()
 
 # Constant input params
 aws_host = 'a5zxmnr1dzhfm-ats.iot.us-west-2.amazonaws.com'
-root_ca_path = '/tmp/AmazonRootCA.pem'
-cert_path = '/tmp/6338467ca1-certificate.pem.crt'
-private_key_path = '/tmp/6338467ca1-private.pem.key'
+root_ca_path = '/local/wellshire-testbed/aws_iot_cred/AmazonRootCA1.pem'
+cert_path = '/local/wellshire-testbed/aws_iot_cred/6338467ca1-certificate.pem.crt'
+private_key_path = '/local/wellshire-testbed/aws_iot_cred/6338467ca1-private.pem.key'
 
 # Incrementing input params
 house_id_base = 'replicator{}'
