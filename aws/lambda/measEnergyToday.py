@@ -24,6 +24,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 def lambda_handler(event, context):
+    
     power_samples = [s["channel1_power_meas"] + s["channel2_power_meas"] for s in event["samples"]]
     max_power = max(power_samples)
     avg_power = sum(power_samples)/float(len(power_samples))
@@ -67,21 +68,35 @@ def lambda_handler(event, context):
                 'max_power_watt': decimal.Decimal(0.0),
                 'avg_power_watt_sum': decimal.Decimal(0.0),
                 'avg_power_watt_num_samples': 0,
-                'energy_kwh': decimal.Decimal(0.0)
+                'energy_kwh': decimal.Decimal(0.0),
+                'dup_detect_request_id': "-",
+                'dup_detect_timestamp':  "-"
             }
+            
+        # Determine if this is a duplicate invokation for the same event
+        if "dup_detect_request_id" not in b:
+            b["dup_detect_request_id"] = "-"
+        if "dup_detect_timestamp" not in b:
+            b["dup_detect_timestamp"] = "-"
+            
+        if b["dup_detect_request_id"] == context.aws_request_id or \
+           b["dup_detect_timestamp"] == event["timestamp"]:
+               print("Duplicate invocation detected! skipping ...")
+        else:
+            b["dup_detect_request_id"] = context.aws_request_id
+            b["dup_detect_timestamp"] = event["timestamp"]
+            # Update aggregated power data in the bucket
+            if max_power > b["max_power_watt"]:
+                b["max_power_watt"] = decimal.Decimal(max_power)
+            b["energy_kwh"] += decimal.Decimal(energy_kwh)
+            b["avg_power_watt_sum"] += decimal.Decimal(avg_power)
+            b["avg_power_watt_num_samples"] += 1
+            b["avg_power"] = b["avg_power_watt_sum"] / b["avg_power_watt_num_samples"]
         
-        # Update aggregated power data in the bucket
-        if max_power > b["max_power_watt"]:
-            b["max_power_watt"] = decimal.Decimal(max_power)
-        b["energy_kwh"] += decimal.Decimal(energy_kwh)
-        b["avg_power_watt_sum"] += decimal.Decimal(avg_power)
-        b["avg_power_watt_num_samples"] += 1
-        b["avg_power"] = b["avg_power_watt_sum"] / b["avg_power_watt_num_samples"]
-        
-        # push updated record back to db
-        try:
-            response = table.put_item(Item=b)
-        except botocore.exceptions.ClientError as e:
-            print(e.response['Error']['Message'])
+            # push updated record back to db
+            try:
+                response = table.put_item(Item=b)
+            except botocore.exceptions.ClientError as e:
+                print(e.response['Error']['Message'])
             
     return 0
