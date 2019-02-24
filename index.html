@@ -9,6 +9,7 @@
 <body>
    <input name="house_id_input" id="house_id_input" type="text" size="20"/>
    <input type="button" id="update_house_id" value="Update"/>
+   <input type="button" id="toggle_req" value="Toggle API"/>
    <div style="top:60px; left:10px; width:800px; height:800px;">
       <div id="house_id">Loading</div>
       <div id="date"></div>
@@ -22,30 +23,44 @@ var chartColors = {
    blue: 'rgb(54,162,235)'
 };
 
+var old_url = "https://2ha8b0sr03.execute-api.us-west-2.amazonaws.com/default/userInterfaceMeasHttp?house_id=";
+var new_url = "https://b201pr4a5m.execute-api.us-west-2.amazonaws.com/default/uiHttpV2?house_id=";
+var cur_req_url = old_url;
+
 $(function(){
 
+   // Toggle request URL
+   $("#toggle_req").click(function() {
+      if (cur_req_url == old_url) {
+         cur_req_url = new_url;
+      } else {
+         cur_req_url = old_url;
+      }
+      update_graph(cur_req_url, $('#house_id_input').val());
+   });
+   
    // Click the update button action
    $("#update_house_id").click(function(){
-      update_graph($('#house_id_input').val());
+      update_graph(cur_req_url, $('#house_id_input').val());
    });
+
    // Hit enter in the input text action
    $("#house_id_input").on("keypress", function(e) {
       if (e.keyCode == 13) {
-         update_graph($('#house_id_input').val())
+         update_graph(cur_req_url, $('#house_id_input').val())
       }
    });
 
    // Initial graph rendering
    var default_house_id = "7905 Wellshire Ct";
    $('#house_id_input').val(default_house_id);
-   update_graph($('#house_id_input').val());
+   update_graph(cur_req_url, $('#house_id_input').val());
 });
 
-function update_graph(house_id) {
-   var request_host = 'https://2ha8b0sr03.execute-api.us-west-2.amazonaws.com'
-   var request_uri = encodeURI("default/userInterfaceMeasHttp?house_id=" + house_id)
+function update_graph(req_url, house_id) {
+   var get_arg = encodeURI(house_id)
    var request = new XMLHttpRequest();
-   request.open('GET', request_host + "/" + request_uri, true);
+   request.open('GET', req_url + get_arg, true);
 
    request.onload = function() {
      var raw_data = JSON.parse(this.responseText);
